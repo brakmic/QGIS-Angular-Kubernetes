@@ -11,6 +11,3 @@ vendor/
 
 # IDEs
 .vscode/
-
-# Geospatial Data
-data/
