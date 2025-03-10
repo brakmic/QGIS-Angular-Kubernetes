@@ -67,7 +67,7 @@ Deploys both QGIS Server and the lightweight web client using Docker Compose.
 ### 1. Kubernetes with Angular Frontend
 
 ```bash
-cd /host_workspace/deployment-k8s
+cd deployment-k8s
 ./deploy.sh
 ```
 
@@ -86,7 +86,7 @@ The deployment can be accessed at `http://qgis.local/` once complete.
 ### 2. Kubernetes with Simple Frontend
 
 ```bash
-cd /host_workspace/deployment-k8s
+cd deployment-k8s
 ./deploy.simple.sh
 ```
 
@@ -106,7 +106,7 @@ The deployment can be accessed at `http://qgis.local/` once complete.
 ### 3. Docker Compose with Simple Frontend
 
 ```bash
-cd /host_workspace/deployment-docker
+cd deployment-docker
 docker compose up -d
 ```
 
