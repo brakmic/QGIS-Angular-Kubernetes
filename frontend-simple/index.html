@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QGIS Server Map Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.4.0/ol.css">
+    <link rel="stylesheet" href="css/main.css" />
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.4.0/dist/ol.js"></script>
+</head>
+<body>
+    <div id="header">
+        <h1>QGIS Server Map Viewer</h1>
+        <div class="controls">
+            <label for="layer-select">Layer:</label>
+            <select id="layer-select">
+                <option value="OSM">OpenStreetMap (Base)</option>
+                <option value="Countries">Countries</option>
+                <option value="Places">Populated Places</option>
+                <option value="Urban">Urban Areas</option>
+                <option value="Disputed">Breakaway and Disputed Areas</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div id="footer">
+        <p>Map data from QGIS Server | Natural Earth Data</p>
+    </div>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+services:
+  # QGIS Server service
+  qgis-server:
+    image: brakmic/qgis-server:latest
+    container_name: qgis-server
+    restart: unless-stopped
+    build:
+      context: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ${HOST_WORKSPACE}/projects:/etc/qgisserver:rw
+      - ${HOST_WORKSPACE}/data:/var/lib/qgisserver/data:rw
+      - ${HOST_WORKSPACE}/deployment-docker/nginx-qgis.conf:/etc/nginx/conf.d/qgis-server.conf:ro
+    environment:
+      - QGIS_PROJECT_FILE=/etc/qgisserver/world_map.qgs
+      - QGIS_SERVER_LOG_LEVEL=2
+      - QGIS_SERVER_ENABLE_GETMAP=1
+      - QGIS_SERVER_TRUST_LAYER_METADATA=true
+      - QGIS_SERVER_WMS_ENABLED=true
+      - QGIS_SERVER_ALLOW_GETMAP=true
+      - QGIS_SERVER_IGNORE_BAD_LAYERS=true
+      - QGIS_SERVER_LANDING_PAGE_PROJECTS_DIRECTORIES=/etc/qgisserver
+      - QGIS_AUTH_DB_DIR_PATH=/var/lib/qgis/.local/share/QGIS/QGIS3/profiles/default/qgis-auth.db/
+    networks:
+      - devnetwork
+
+  # Simple web viewer for the maps
+  map-viewer:
+    image: httpd:alpine
+    container_name: qgis-viewer
+    restart: unless-stopped
+    volumes:
+      - ${HOST_WORKSPACE}/frontend-simple:/usr/local/apache2/htdocs
+      - ${HOST_WORKSPACE}/frontend-simple/proxy.conf:/usr/local/apache2/conf/extra/proxy.conf
+    ports:
+      - "8081:80"
+    depends_on:
+      - qgis-server
+    command: >
+      /bin/sh -c "
+        echo 'LoadModule proxy_module modules/mod_proxy.so' >> /usr/local/apache2/conf/httpd.conf &&
+        echo 'LoadModule proxy_http_module modules/mod_proxy_http.so' >> /usr/local/apache2/conf/httpd.conf &&
+        echo 'LoadModule headers_module modules/mod_headers.so' >> /usr/local/apache2/conf/httpd.conf &&
+        echo 'Include conf/extra/proxy.conf' >> /usr/local/apache2/conf/httpd.conf &&
+        httpd-foreground
+      "
+    networks:
+      - devnetwork
+
+networks:
+  devnetwork:
+    driver: bridge

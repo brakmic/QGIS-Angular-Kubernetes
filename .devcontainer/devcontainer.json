@@ -1,0 +1,44 @@
+{
+  "name": "QGIS-Angular-Kubernetes",
+  "image": "brakmic/jsdev-docker:latest",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/host_workspace,type=bind,consistency=cached",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.exclude": {
+          "**/.git": true,
+          "**/.DS_Store": true
+        }
+      },
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "nrwl.angular-console"
+      ]
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/setup-workspace.mjs,target=/workspace/.devcontainer/setup-workspace.mjs,type=bind",
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "forwardPorts": [
+    3000, // for testing
+    3001, // for testing
+    3002, // for testing
+    3003, // for testing
+    4200 // for Angular
+  ],
+  "initializeCommand": "docker network inspect devnetwork >/dev/null 2>&1 || docker network create devnetwork",
+  "runArgs": [
+    "--network=devnetwork",
+    "--add-host=host.docker.internal:host-gateway",
+    "--add-host=desktop-control-plane:host-gateway", //KinD k8s
+    "--add-host=docker-for-desktop:host-gateway" // kubeadm k8s
+  ],
+  "postCreateCommand": "node /workspace/.devcontainer/setup-workspace.mjs && ln -sf /workspace/dev.code-workspace /home/jsdev/.vscode-server/dev.code-workspace",
+  "remoteUser": "jsdev",
+  "containerEnv": {
+    "HOST_WORKSPACE": "${localWorkspaceFolder}"
+  }
+}

@@ -1,0 +1,189 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qgis-server
+  labels:
+    app: qgis-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qgis-server
+  template:
+    metadata:
+      labels:
+        app: qgis-server
+    spec:
+      securityContext:
+        fsGroup: 101  # systemd-journal group
+      initContainers:
+      - name: init-setup
+        image: alpine:3.18
+        command:
+        - sh
+        - -c
+        - |
+          echo "Setting up QGIS Server environment..."
+          mkdir -p /var/log/qgis
+          mkdir -p /var/lib/qgis/.local/share/QGIS/QGIS3/profiles/default
+          mkdir -p /etc/nginx/conf.d
+          mkdir -p /etc/qgisserver
+          mkdir -p /etc/scripts
+          mkdir -p /var/lib/qgisserver/data
+          mkdir -p /favicon
+          
+          # Copy the nginx config directly from the ConfigMap mount
+          echo "Setting up nginx configuration..."
+          cp -fv /config-source/qgis-server.conf /etc/nginx/conf.d/qgis-server.conf
+          
+          # Copy the entrypoint script and make it executable
+          echo "Setting up entrypoint script..."
+          cp -fv /entrypoint-source/entrypoint.sh /etc/scripts/entrypoint.sh
+          chmod +x /etc/scripts/entrypoint.sh
+          
+          # Copy the QGIS project file
+          echo "Copying QGIS project file..."
+          cp -fv /qgis-project-source/world_map.qgs /etc/qgisserver/world_map.qgs
+          
+          # Copy favicon
+          echo "Setting up favicon..."
+          cp -fv /favicon-source/favicon.ico /favicon/favicon.ico
+          
+          echo "Downloading Natural Earth data..."
+          cd /tmp
+          apk add --no-cache curl unzip
+
+          # Base download URL
+          BASE_URL="https://naciscdn.org/naturalearth/50m/cultural"
+
+          # Function for downloading and extracting
+          download_and_extract() {
+            ZIP_FILE="$1"
+            OUTPUT_NAME="$2"
+            
+            echo "Downloading $ZIP_FILE as $OUTPUT_NAME..."
+            if curl -L "$BASE_URL/$ZIP_FILE" -o "$OUTPUT_NAME"; then
+              echo "Download successful for $ZIP_FILE. File size: $(ls -lh $OUTPUT_NAME | awk '{print $5}')"
+              echo "Extracting $OUTPUT_NAME..."
+              unzip -o "$OUTPUT_NAME" -d /var/lib/qgisserver/data
+              echo "Extraction complete for $OUTPUT_NAME"
+            else
+              echo "ERROR: Failed to download $ZIP_FILE"
+            fi
+          }
+
+          # Download maps
+          download_and_extract "ne_50m_admin_0_countries.zip" "countries.zip" 
+          download_and_extract "ne_50m_populated_places.zip" "places.zip"
+          download_and_extract "ne_50m_urban_areas.zip" "urban.zip"
+          download_and_extract "ne_50m_admin_0_breakaway_disputed_areas.zip" "disputed.zip"
+
+          echo "All downloads completed. Files in data directory:"
+          ls -la /var/lib/qgisserver/data/
+          
+          # Update QGIS project file to point to correct location
+          echo "Updating project file paths..."
+          sed -i 's|<datasource>../data/|<datasource>/var/lib/qgisserver/data/|g' /etc/qgisserver/world_map.qgs
+          
+          echo "Layer datasources in project file:"
+          grep -o '<datasource>.*</datasource>' /etc/qgisserver/world_map.qgs
+          
+          echo "Init container setup complete."
+        volumeMounts:
+        - name: qgis-project-source
+          mountPath: /qgis-project-source
+          readOnly: true
+        - name: config-source
+          mountPath: /config-source
+          readOnly: true
+        - name: entrypoint-source
+          mountPath: /entrypoint-source
+          readOnly: true
+        - name: qgis-config-dir
+          mountPath: /etc/qgisserver
+        - name: nginx-conf
+          mountPath: /etc/nginx/conf.d
+        - name: scripts-dir
+          mountPath: /etc/scripts
+        - name: qgis-data
+          mountPath: /var/lib/qgisserver/data
+        - name: favicon-source
+          mountPath: /favicon-source
+          readOnly: true
+        - name: favicon-dir
+          mountPath: /favicon
+      containers:
+      - name: qgis-server
+        image: brakmic/qgis-server:latest
+        imagePullPolicy: Always
+        command: ["/etc/scripts/entrypoint.sh"]
+        ports:
+        - containerPort: 80
+        env:
+        - name: QGIS_PROJECT_FILE
+          value: "/etc/qgisserver/world_map.qgs"
+        - name: QGIS_SERVER_LOG_LEVEL
+          value: "0"
+        - name: QGIS_DEBUG
+          value: "1"
+        - name: QGIS_SERVER_ENABLE_GETMAP
+          value: "1"
+        - name: QGIS_AUTH_DB_DIR_PATH
+          value: "/var/lib/qgis/.local/share/QGIS/QGIS3/profiles/default/qgis-auth.db"
+        - name: QGIS_SERVER_LOG_FILE
+          value: "/var/log/qgis/qgisserver.log"
+        - name: QGIS_SERVER_TRUST_LAYER_METADATA
+          value: "true"
+        securityContext:
+          allowPrivilegeEscalation: true
+        volumeMounts:
+        - name: qgis-config-dir
+          mountPath: /etc/qgisserver
+        - name: qgis-data
+          mountPath: /var/lib/qgisserver/data
+        - name: qgis-auth
+          mountPath: /var/lib/qgis
+        - name: qgis-logs
+          mountPath: /var/log/qgis
+        - name: nginx-conf
+          mountPath: /etc/nginx/conf.d
+        - name: scripts-dir
+          mountPath: /etc/scripts
+        - name: var-run
+          mountPath: /var/run
+        - name: favicon-dir
+          mountPath: /favicon
+          readOnly: true
+      volumes:
+      - name: qgis-project-source
+        configMap:
+          name: qgis-project-file
+          defaultMode: 0644
+      - name: config-source
+        configMap:
+          name: qgis-nginx-config
+          defaultMode: 0644
+      - name: entrypoint-source
+        configMap:
+          name: qgis-entrypoint-script
+          defaultMode: 0644
+      - name: favicon-source
+        configMap:
+          name: qgis-favicon
+          defaultMode: 0644
+      - name: qgis-auth
+        emptyDir: {}
+      - name: qgis-logs
+        emptyDir: {}
+      - name: qgis-config-dir
+        emptyDir: {}
+      - name: qgis-data
+        emptyDir: {}
+      - name: nginx-conf
+        emptyDir: {}
+      - name: scripts-dir
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
+      - name: favicon-dir
+        emptyDir: {}

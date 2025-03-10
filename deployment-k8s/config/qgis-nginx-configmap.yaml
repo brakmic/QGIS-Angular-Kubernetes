@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qgis-nginx-config
+data:
+  qgis-server.conf: |
+    server {
+        listen 80;
+        server_name _;
+        
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Favicon handler
+        location = /favicon.ico {
+            alias /favicon/favicon.ico;
+            access_log off;
+            log_not_found off;
+            expires max;
+        }
+        
+        # Error reporting
+        error_log /var/log/nginx/error.log debug;
+        access_log /var/log/nginx/access.log;
+        
+        # Debug response headers for troubleshooting
+        add_header X-Debug-Request-URI $request_uri;
+        add_header X-Debug-Request-Path $uri;
+        
+        # Directory listing for debugging
+        autoindex on;
+        
+        # Handle QGIS MapServer requests - for standard short name operations
+        location ~ ^/qgis/qgis_mapserv\.fcgi {
+            include fastcgi_params;
+            fastcgi_pass unix:/var/run/fcgiwrap.socket;
+            fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin/qgis_mapserv.fcgi;
+            
+            # Enhanced debugging for development
+            fastcgi_param QGIS_SERVER_LOG_LEVEL 0;  # Detailed logging (0 = maximum)
+            fastcgi_param QGIS_DEBUG 1;
+            fastcgi_param QGIS_SERVER_LOG_FILE "/var/log/qgis/qgisserver.log";
+            
+            # Important: Set project file
+            fastcgi_param QGIS_PROJECT_FILE /etc/qgisserver/world_map.qgs;
+            fastcgi_param QGIS_AUTH_DB_DIR_PATH "/var/lib/qgis/.local/share/QGIS/QGIS3/profiles/default/qgis-auth.db/";
+            
+            # Critical: Help QGIS with data paths
+            fastcgi_param QGIS_SERVER_TRUST_LAYER_METADATA true;
+            
+            # Enable required QGIS services
+            fastcgi_param QGIS_SERVER_WMS_ENABLED true;
+            fastcgi_param QGIS_SERVER_WFS_ENABLED true;
+            fastcgi_param QGIS_SERVER_WMTS_ENABLED true;
+            fastcgi_param QGIS_SERVER_ALLOW_GETMAP true;
+            fastcgi_param QGIS_SERVER_WMS_MAX_HEIGHT 5000;
+            fastcgi_param QGIS_SERVER_WMS_MAX_WIDTH 5000;
+            
+            # Buffer settings
+            fastcgi_buffers 16 16k;
+            fastcgi_buffer_size 32k;
+            fastcgi_read_timeout 300;
+            fastcgi_intercept_errors on;
+
+            # Log the actual request parameters
+            fastcgi_param REMOTE_ADDR $remote_addr;
+            fastcgi_param QUERY_STRING $query_string;
+        }
+        
+        # Health check
+        location /health {
+            return 200 'QGIS Server is running';
+            add_header Content-Type text/plain;
+        }
+        
+        # Default location handler
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }

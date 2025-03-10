@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: qgis-viewer
+spec:
+  selector:
+    app: qgis-viewer
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP

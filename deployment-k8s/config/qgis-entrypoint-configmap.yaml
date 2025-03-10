@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qgis-entrypoint-script
+data:
+  entrypoint.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Create required directories
+    mkdir -p /var/log/qgis
+    chmod 777 /var/log/qgis
+    
+    # Create and set permissions for QGIS authentication DB directory
+    mkdir -p /var/lib/qgis/.local/share/QGIS/QGIS3/profiles/default/qgis-auth.db/
+    chmod -R 777 /var/lib/qgis/
+    echo "QGIS Auth DB directory created at: $QGIS_AUTH_DB_DIR_PATH"
+    
+    # Create symbolic link from /var/lib/qgisserver/data to /etc/data
+    echo "Setting up data directory symlinks..."
+    mkdir -p /etc/data
+    
+    # Check if QGIS project file exists
+    if [ -f "$QGIS_PROJECT_FILE" ]; then
+        echo "Using QGIS project file: $QGIS_PROJECT_FILE"
+        
+        # Extract layer info from project file
+        echo "Layer datasource in project file:"
+        grep -o '<datasource>.*</datasource>' "$QGIS_PROJECT_FILE" || echo "No datasources found"
+        
+        echo "Layer shortname in project file:"
+        grep -o '<shortname>.*</shortname>' "$QGIS_PROJECT_FILE" || echo "No shortnames found"
+        
+        echo "WMS layer name settings in project file:"
+        grep -o '<property key="WMSName">.*</property>' "$QGIS_PROJECT_FILE" || echo "No WMS names found"
+        
+        # Update nginx configuration with correct project file
+        sed -i "s|fastcgi_param QGIS_PROJECT_FILE .*|fastcgi_param QGIS_PROJECT_FILE $QGIS_PROJECT_FILE;|" /etc/nginx/conf.d/qgis-server.conf
+    else
+        echo "Warning: QGIS project file not found at $QGIS_PROJECT_FILE"
+        echo "Available project files:"
+        find /etc/qgisserver -name "*.qgs" -o -name "*.qgz" | sort
+    fi
+    
+    # Update NGINX config
+    sed -i "s|fastcgi_param QGIS_SERVER_LOG_LEVEL .*|fastcgi_param QGIS_SERVER_LOG_LEVEL $QGIS_SERVER_LOG_LEVEL;|" /etc/nginx/conf.d/qgis-server.conf
+    echo "fastcgi_param QGIS_AUTH_DB_DIR_PATH $QGIS_AUTH_DB_DIR_PATH;" >> /etc/nginx/conf.d/qgis-server.conf
+    
+    # List project files
+    echo "Project files in /etc/qgisserver:"
+    ls -la /etc/qgisserver/
+    
+    # Make required directories accessible to www-data
+    echo "Setting proper permissions..."
+    chmod -R 755 /etc/data
+    chown -R www-data:www-data /etc/data
+    
+    # Start fcgiwrap
+    echo "Starting fcgiwrap..."
+    spawn-fcgi -u www-data -g www-data -s /var/run/fcgiwrap.socket /usr/sbin/fcgiwrap
+    chmod 777 /var/run/fcgiwrap.socket
+    
+    # Make www-data user the owner of QGIS auth directory
+    chown -R www-data:www-data /var/lib/qgis
+    
+    # Start Xvfb (needed for QGIS Server rendering)
+    echo "Starting Xvfb..."
+    Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset > /dev/null 2>&1 &
+    export DISPLAY=:99
+    
+    # Fix permissions
+    echo "Setting permissions..."
+    chmod -R 755 /etc/qgisserver || true
+    chmod -R 755 /var/lib/qgisserver/data || true
+    
+    # Add additional parameters for better debugging
+    echo "Setting QGIS Server for maximum debugging..."
+    sed -i 's/fastcgi_param QGIS_SERVER_LOG_LEVEL .*/fastcgi_param QGIS_SERVER_LOG_LEVEL 2;/' /etc/nginx/conf.d/qgis-server.conf
+    echo "fastcgi_param QGIS_DEBUG 1;" >> /etc/nginx/conf.d/qgis-server.conf
+    
+    # Validate nginx config before starting
+    echo "Validating NGINX configuration..."
+    nginx -t || { echo "NGINX configuration is invalid"; exit 1; }
+    
+    # Start nginx in foreground
+    echo "Starting nginx..."
+    exec nginx -g "daemon off;"

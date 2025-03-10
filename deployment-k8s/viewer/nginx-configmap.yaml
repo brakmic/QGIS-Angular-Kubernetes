@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: viewer-nginx-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Favicon handler
+        location = /favicon.ico {
+            alias /favicon/favicon.ico;
+            access_log off;
+            log_not_found off;
+            expires max;
+        }
+        
+        # Enable better error reporting for troubleshooting
+        error_log /var/log/nginx/error.log debug;
+        access_log /var/log/nginx/access.log;
+        
+        # Debug response headers
+        add_header X-Debug-Request-URI $request_uri;
+        add_header X-Debug-Request-Path $uri;
+        
+        # Directory listing for debugging
+        autoindex on;
+
+        # Handle JavaScript files
+        location ~ \.js$ {
+            try_files $uri =404;
+            add_header Content-Type "application/javascript";
+        }
+        
+        # Handle CSS files
+        location ~ \.css$ {
+            try_files $uri =404;
+            add_header Content-Type "text/css";
+        }
+        
+        # Default location handler
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }

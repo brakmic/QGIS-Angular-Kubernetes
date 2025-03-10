@@ -1,0 +1,15 @@
+{
+  "production": false,
+  "qgisServerUrl": "/qgis/qgis_mapserv.fcgi",
+  "availableLayers": [
+    { "id": "OSM", "name": "OpenStreetMap (Base)" },
+    { "id": "Countries", "name": "Countries" },
+    { "id": "Places", "name": "Populated Places" },
+    { "id": "Urban", "name": "Urban Areas" },
+    { "id": "Disputed", "name": "Breakaway and Disputed Areas" }
+  ],
+  "initialView": {
+    "center": [10, 50],
+    "zoom": 4
+  }
+}

@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: qgis-ingress
+  annotations:
+    # Connection settings
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600" 
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    
+    # Size limits
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/client-max-body-size: "50m"
+    
+    # Buffer settings for QGIS responses
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    
+    # Disable SSL redirect as we're using HTTP
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    
+    # CORS settings for web clients
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    
+    # Enable regex for paths
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: qgis.local
+    http:
+      paths:
+      - path: /qgis(/?.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: qgis-server
+            port:
+              number: 80
+      - path: /(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: qgis-viewer
+            port:
+              number: 80

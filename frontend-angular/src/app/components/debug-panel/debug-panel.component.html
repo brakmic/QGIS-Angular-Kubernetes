@@ -1,0 +1,25 @@
+<div class="debug-panel">
+  <div class="debug-header">QGIS Server Debug Panel</div>
+  <div class="debug-content">
+    <div class="debug-section">
+      <div class="debug-header">Connection Status</div>
+      <div>{{ connectionStatus() }}</div>
+    </div>
+    <div class="debug-section">
+      <div class="debug-header">Layer Information</div>
+      <div [innerText]="layerInfo()"></div>
+    </div>
+    <div class="debug-section">
+      <div class="debug-header">Request Details</div>
+      <div [innerText]="requestInfo()"></div>
+    </div>
+    <div class="debug-actions">
+      <button class="debug-button" (click)="testConnection()">Test Connection</button>
+      <button class="debug-button" (click)="getCapabilities()">Get Capabilities</button>
+      <button class="debug-button" (click)="testGetMap('Countries')">Test GetMap (Countries)</button>
+      <button class="debug-button" (click)="clearLog()">Clear Log</button>
+      <button class="debug-button" (click)="toggleDebug()" [appDebugMode]="true">Toggle Console Debug</button>
+      <button class="debug-button" (click)="analyzeCapabilities()">Analyze Layers</button>
+    </div>
+  </div>
+</div>

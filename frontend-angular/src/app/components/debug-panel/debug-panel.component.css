@@ -1,0 +1,52 @@
+.debug-panel {
+  position: relative;
+  margin: 10px auto;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  max-width: 400px;
+  max-height: 400px;
+  overflow: auto;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.debug-content {
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.debug-section {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.debug-header {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.success { color: green; }
+.error { color: red; }
+.warning { color: orange; }
+
+.debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.debug-button {
+  padding: 5px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.debug-button:hover {
+  background: #e0e0e0;
+}

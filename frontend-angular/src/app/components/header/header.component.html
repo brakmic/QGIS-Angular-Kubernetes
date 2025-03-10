@@ -1,0 +1,11 @@
+<header id="header">
+  <h1>QGIS Server Map Viewer</h1>
+  <div class="controls" *ngIf="config">
+    <label for="layer-select">Layer:</label>
+    <select id="layer-select" [formControl]="layerControl">
+      <option *ngFor="let item of config.availableLayers" [value]="item.id">
+        {{ item.name }}
+      </option>
+    </select>
+  </div>
+</header>

@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "src",
+    "outDir": "./out-tsc/app",
+    "paths": {
+      "@app/*": ["app/*"],
+      "@components/*": ["app/components/*"],
+      "@services/*": ["app/services/*"],
+      "@interceptors/*": ["app/interceptors/*"],
+      "@directives/*": ["app/directives/*"],
+      "@signals/*": ["app/signals/*"],
+      "@environments/*": ["environments/*"]
+    },
+    "types": []
+  },
+  "files": [
+    "src/main.ts"
+  ],
+  "include": [
+    "src/**/*.d.ts"
+  ]
+}
